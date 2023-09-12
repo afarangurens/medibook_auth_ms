@@ -1,0 +1,28 @@
+default: &default
+  adapter: postgresql
+  encoding: unicode
+  pool: <%= ENV.fetch("RAILS_MAX_THREADS") { 5 } %>
+
+development:
+  <<: *default
+  database: medibook_auth_db
+  username: postgres
+  password: 1234 # Set the password for the postgres user here
+  host: localhost
+  port: 5432
+
+test:
+  <<: *default
+  database: medibook_auth_db_test
+  username: postgres
+  password: 1234 # Set the password for the postgres user here
+  host: localhost
+  port: 5432
+
+production:
+  <<: *default
+  database: medibook_auth_db_production
+  username: postgres
+  password: 1234 # Set the password for the postgres user here
+  host: localhost
+  port: 5432
