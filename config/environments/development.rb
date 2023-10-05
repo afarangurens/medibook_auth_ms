@@ -11,6 +11,9 @@ Rails.application.configure do
   # Do not eager load code on boot.
   config.eager_load = false
 
+  config.hosts << "host.docker.internal"
+  config.hosts << "19fa-181-235-152-153.ngrok-free.app"
+
   # Show full error reports.
   config.consider_all_requests_local = true
 

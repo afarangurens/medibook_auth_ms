@@ -3,10 +3,15 @@ class Users::SessionsController < Devise::SessionsController
   respond_to :json
   private
   def respond_with(current_user, _opts = {})
+    token = generate_jwt_token(current_user) # Generate JWT token for the user
     render json: {
-      status: { 
-        code: 200, message: 'Logged in successfully.',
-        data: { user: UserSerializer.new(current_user).serializable_hash[:data][:attributes] }
+      status: {
+        code: 200,
+        message: 'Logged in successfully.',
+        data: {
+          user: UserSerializer.new(current_user).serializable_hash[:data][:attributes],
+          token: token # Include the JWT token in the response
+        }
       }
     }, status: :ok
   end
