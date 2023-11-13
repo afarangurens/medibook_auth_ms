@@ -1,37 +1,59 @@
 class Users::SessionsController < Devise::SessionsController
   include RackSessionsFix
   respond_to :json
-  private
-  def respond_with(current_user, _opts = {})
-    token = generate_jwt_token(current_user) # Generate JWT token for the user
+
+  def create
+    ldap = Net::LDAP.new
+    ldap.host = '146.148.102.203' 
+    ldap.port = 389
+    ldap.auth "cn=admin,dc=arqsoft,dc=unal,dc=edu,dc=co", "admin"
+    
+    user_email = params[:user][:email]
+    user_password = params[:user][:password]
+
+    if ldap.bind_as(
+        base: 'dc=arqsoft,dc=unal,dc=edu,dc=co',
+        filter: "(cn=#{user_email})",
+        password: user_password
+      )
+      # LDAP authentication successful
+      user = User.find_or_create_by(username: user_email) do |u|
+        u.email = user_email
+        u.password = params[:user][:password]
+      end
+
+      sign_in(:user, user)
+
+      token = generate_jwt_token(user)
+      render json: {
+        status: {
+          code: 200,
+          message: 'Logged in successfully.',
+          data: {
+            user: UserSerializer.new(user).serializable_hash[:data][:attributes],
+            token: token
+          }
+        }
+      }, status: :ok
+    else
+      # LDAP authentication failed
+      render json: {
+        status: {
+          code: 401,
+          message: 'Invalid username or password.'
+        }
+      }, status: :unauthorized
+    end
+  end
+
+  def destroy
+    sign_out(current_user) if user_signed_in?
     render json: {
       status: {
         code: 200,
-        message: 'Logged in successfully.',
-        data: {
-          user: UserSerializer.new(current_user).serializable_hash[:data][:attributes],
-          token: token # Include the JWT token in the response
-        }
+        message: 'Logged out successfully.'
       }
     }, status: :ok
-  end
-  def respond_to_on_destroy
-    if request.headers['Authorization'].present?
-      jwt_payload = JWT.decode(request.headers['Authorization'].split(' ').last, Rails.application.credentials.devise_jwt_secret_key!).first
-      current_user = User.find(jwt_payload['sub'])
-    end
-    
-    if current_user
-      render json: {
-        status: 200,
-        message: 'Logged out successfully.'
-      }, status: :ok
-    else
-      render json: {
-        status: 401,
-        message: "Couldn't find an active session."
-      }, status: :unauthorized
-    end
   end
 
   private
@@ -43,5 +65,4 @@ class Users::SessionsController < Devise::SessionsController
     }
     JWT.encode(payload, Rails.application.credentials.devise_jwt_secret_key)
   end
-
 end
